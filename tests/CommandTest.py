@@ -169,7 +169,7 @@ class POWTest(BaseTest):
         '''
         self._init_conf({'key': '$HERE/irrelevant'})
         conf = self.cut._conf()
-        self.assertEqual(conf['key'], p(self.cut.powdir, 'irrelevant'))
+        self.assertEqual(realpath(conf['key']), realpath(p(self.cut.powdir, 'irrelevant')))
 
     def test_user_config_HERE_relative(self):
         '''

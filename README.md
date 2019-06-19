@@ -77,8 +77,8 @@ Quickstart
 -----------
 
 To get started, you'll need to connect to a database. The OpenWorm database is
-currently hosted at `git@github.com:openworm/OpenWormData.git`. You can read it
-in by executing the following command line after installation:
+currently hosted at `https://github.com/openworm/OpenWormData.git`. You can
+read it in by executing the following command line after installation:
 
 ```bash
 pow clone https://github.com/openworm/OpenWormData.git
@@ -96,16 +96,18 @@ where `readme.conf` contains:
 ```json
 {
     "rdf.source" : "ZODB",
-    "rdf.store_conf" : ".pow/worm.db"
+    "rdf.store_conf" : "$HERE/.pow/worm.db"
 }
 ```
+
+`$HERE` is resolved by PyOpenWorm to the location of the config file.
 
 Then you can try out a few things:
 
 ```python
 # Make the context
 >>> from PyOpenWorm.context import Context
->>> ctx = Context(ident='http://openworm.org/entities/bio#worm0-data', conf=conn.conf)
+>>> ctx = Context(ident='http://openworm.org/data', conf=conn.conf)
 
 # Grabs the representation of the neuronal network
 >>> from PyOpenWorm.worm import Worm
@@ -212,7 +214,7 @@ object of that type and calling `load()`::
 ...     w = cctx.Worm()
 ...     net = cctx.Network()
 ...     w.neuron_network(net)
-PyOpenWorm.statement.Statement(subj=Worm(ident=rdflib.term.URIRef('http://openworm.org/entities/Worm/a8020ed8519038a6bbc98f1792c46c97b')), prop=PyOpenWorm.worm.Worm_neuron_network(owner=Worm(ident=rdflib.term.URIRef('http://openworm.org/entities/Worm/a8020ed8519038a6bbc98f1792c46c97b'))), obj=Network(ident=rdflib.term.URIRef('http://openworm.org/entities/Network/ad33294553d7aae0c3c3f4ab331a295a1')), context=PyOpenWorm.context.QueryContext(ident="http://openworm.org/entities/bio#worm0-data"))
+PyOpenWorm.statement.Statement(subj=Worm(ident=rdflib.term.URIRef('http://openworm.org/entities/Worm/a8020ed8519038a6bbc98f1792c46c97b')), prop=PyOpenWorm.worm.Worm_neuron_network(owner=Worm(ident=rdflib.term.URIRef('http://openworm.org/entities/Worm/a8020ed8519038a6bbc98f1792c46c97b'))), obj=Network(ident=rdflib.term.URIRef('http://openworm.org/entities/Network/ad33294553d7aae0c3c3f4ab331a295a1')), context=PyOpenWorm.context.QueryContext(ident="http://openworm.org/data"))
 
 ...     neur = cctx.Neuron()
 ...     neur.count()
@@ -224,7 +226,7 @@ See what neurons express a given neuropeptide::
 ```python
 >>> n = ctx.stored(Neuron)()
 >>> n.neuropeptide("INS-26")
-PyOpenWorm.statement.Statement(subj=Neuron(ident=rdflib.term.Variable('aNeuron_...')), prop=PyOpenWorm.neuron.Neuron_neuropeptide(owner=Neuron(ident=rdflib.term.Variable('aNeuron_...'))), obj=yarom.propertyValue.PropertyValue(rdflib.term.Literal('INS-26')), context=PyOpenWorm.context.QueryContext(ident="http://openworm.org/entities/bio#worm0-data"))
+PyOpenWorm.statement.Statement(subj=Neuron(ident=rdflib.term.Variable('aNeuron_...')), prop=PyOpenWorm.neuron.Neuron_neuropeptide(owner=Neuron(ident=rdflib.term.Variable('aNeuron_...'))), obj=yarom.propertyValue.PropertyValue(rdflib.term.Literal('INS-26')), context=PyOpenWorm.context.QueryContext(ident="http://openworm.org/data"))
 
 >>> sorted(x.name() for x in n.load())
 ['ASEL', 'ASER', 'ASIL', 'ASIR']
