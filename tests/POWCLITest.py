@@ -18,6 +18,7 @@ from PyOpenWorm.datasource import DataTranslator
 from PyOpenWorm.context import Context, IMPORTS_CONTEXT_KEY, DATA_CONTEXT_KEY
 from PyOpenWorm.context_common import CONTEXT_IMPORTS
 
+from .TestUtilities import assertRegexpMatches
 
 pytestmark = mark.pow_cli_test
 
@@ -32,9 +33,10 @@ def module_fixture():
         f.write(ptcov)
     shutil.copytree('.pow', p(res.testdir, '.pow'), symlinks=True)
 
-    yield res
-
-    shutil.rmtree(res.testdir)
+    try:
+        yield res
+    finally:
+        shutil.rmtree(res.testdir)
 
 
 self = fixture(module_fixture)
@@ -318,10 +320,3 @@ def test_translate_data_source_loader(self):
         self.sh('pow translate http://example.org/trans1 http://example.org/lfds'),
         r'Merged_Nuclei_Stained_Worm.zip'
     )
-
-
-def assertRegexpMatches(text, pattern):
-    if isinstance(pattern, six.string_types):
-        pattern = re.compile(pattern)
-    if not pattern.search(text):
-        raise AssertionError('Could not find {} in:\n{}'.format(pattern, text))

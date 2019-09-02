@@ -1,10 +1,9 @@
 from __future__ import print_function, absolute_import
 import sys
+from contextlib import contextmanager
 import os
 from os.path import exists, abspath, join as pth_join, dirname, isabs, relpath
-from os import makedirs, mkdir, listdir, rename, unlink, stat
 
-from contextlib import contextmanager
 try:
     from os import scandir
 except ImportError:
@@ -17,6 +16,7 @@ except ImportError:
             yield sd
         finally:
             del sd
+from os import makedirs, mkdir, listdir, rename, unlink, stat
 
 import hashlib
 import shutil
@@ -24,16 +24,16 @@ import json
 import logging
 import errno
 from collections import namedtuple
-from six import string_types
 
 try:
     from tempfile import TemporaryDirectory
 except ImportError:
     from backports.tempfile import TemporaryDirectory
 
-from .command_util import IVar, SubCommand, GeneratorWithData
+from .command_util import IVar, SubCommand, GeneratorWithData, GenericUserError
+from .commands.bundle import POWBundle
 from .context import Context, DATA_CONTEXT_KEY, IMPORTS_CONTEXT_KEY
-from .capability import provide, is_capable
+from .capability import provide
 from .capabilities import FilePathProvider
 from .datasource_loader import DataSourceDirLoader, LoadFailed
 
@@ -301,65 +301,6 @@ class _ProgressMock(object):
 
     def __call__(self, *args, **kwargs):
         return type(self)()
-
-
-class POWBundle(object):
-    def __init__(self, parent):
-        self._parent = parent
-
-    def fetch(self, bundle_name):
-        self._load(bundle_name)
-
-    def load(self, input):
-        '''
-        Parameters
-        ----------
-        input : str
-            The source file
-        '''
-
-    def save(self, output):
-        '''
-        Parameters
-        ----------
-        output : str
-            The target file
-        '''
-
-    def install(self, bundle_name):
-        '''
-        Install the bundle locally for use across projects on the same machine
-
-        Parameters
-        ----------
-        bundle_name : str
-            Name of the bundle to install
-        '''
-
-    def deploy(self, bundle_name, remotes=None):
-        '''
-        Deploys a bundle to a remote. The target remotes come from project and user
-        settings or, if provided, the parameters
-
-        Parameters
-        ----------
-        bundle_name : str
-            Name of the bundle to deploy
-        remotes : str
-            Names of the remotes to deploy to
-        '''
-
-    def checkout(self, bundle_name):
-        '''
-        Switch to the named bundle
-        '''
-
-    def _load(self, bundle_name):
-        loader = self._get_bundle_loader(bundle_name)
-        bundle = loader(bundle_name)
-
-    def _get_bundle_loader(self, bundle_name):
-        pass
 
 
 class POWConfig(object):
@@ -673,6 +614,8 @@ class POW(object):
     contexts = SubCommand(POWContexts)
 
     evidence = SubCommand(POWEvidence)
+
+    bundle = SubCommand(POWBundle)
 
     def __init__(self):
         from time import time
@@ -1098,7 +1041,7 @@ class POW(object):
         from glob import glob
         for g in glob(self.store_name + '*'):
             self.message('unlink', g)
-            os.unlink(g)
+            unlink(g)
 
         ccfile = pth_join(self.powdir, 'changed_contexts')
         for g in glob(ccfile + '*'):
@@ -1618,10 +1561,6 @@ def write_config(ob, f):
     f.truncate()
 
 
-class GenericUserError(Exception):
-    ''' An error which should be reported to the user. Not necessarily an error that is the user's fault '''
-
-
 class InvalidGraphException(GenericUserError):
     ''' Thrown when a graph cannot be translated due to formatting errors '''
 
@@ -1843,6 +1782,8 @@ class POWSaveNamespace(object):
             raise StatementValidationError(unvalidated)
 
     def save(self, *args, **kwargs):
+        # TODO: (openworm/PyOpenWorm#374) look at automatically importing contexts based
+        # on UnimportedContextRecords among SaveValidationFailureRecords
         self.validate()
         for c in self._created_ctxs:
             c.save_context(*args, **kwargs)
@@ -1854,6 +1795,21 @@ class POWSaveNamespace(object):
 
 
 class UnimportedContextRecord(namedtuple('UnimportedContextRecord', ['context', 'node_index', 'statement'])):
+    '''
+    Stored when statements include a reference to an object but do not include the
+    context of that object in the callback passed to `POW.save`. For example, if we had a
+    callback like this::
+
+        def pow_data(ns):
+            ctxA = ns.new_context(ident='http://example.org/just-pizza-stuff')
+            ctxB = ns.new_context(ident='http://example.org/stuff-sam-likes')
+            sam = ctxB(Person)('sam')
+            pizza = ctxA(Thing)('pizza')
+            sam.likes(pizza)
+
+    it would generate this error because ``ctxB`` does not declare an import for ``ctxA``
+    '''
+
     def __str__(self):
         from yarom.rdfUtils import triple_to_n3
         trip = self.statement.to_triple()
